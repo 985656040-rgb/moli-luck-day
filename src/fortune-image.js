@@ -1,4 +1,4 @@
-import { isValidReading, MOODS, TAROTS } from "./data.js";
+import { getMood, getTarot, normalizeReading } from "./data.js";
 
 const CREAM = "#FFF9EA";
 const FOREST = "#355C32";
@@ -188,6 +188,7 @@ function drawFallbackTarot(ctx, id, x, y, width, height) {
     star: "#526B73",
     sun: "#F4D98D",
     moon: "#516476",
+    empress: "#C5D3A0",
     lovers: "#EDC6BD",
     world: "#B2C693",
     fool: "#BFD5CC",
@@ -231,6 +232,9 @@ function drawFallbackTarot(ctx, id, x, y, width, height) {
     ctx.beginPath();
     ctx.arc(x + width / 2 + 25, y + height * 0.3 - 13, 44, 0, Math.PI * 2);
     ctx.fill();
+  } else if (id === "empress") {
+    leaves(ctx, x + width * 0.2, y + height * 0.1, width / 180);
+    star(ctx, x + width * 0.65, y + height * 0.21, 20, "#FFF3C2");
   } else if (id === "lovers") {
     text(ctx, "♡", x + width / 2, y + height * 0.36, {
       size: 118,
@@ -353,10 +357,11 @@ export async function generateFortuneImage(
   result,
   { moliSvg, tarotSvg, itemSvgs = {} } = {},
 ) {
-  if (!isValidReading(result))
+  result = normalizeReading(result);
+  if (!result)
     throw new Error("This reading is incomplete. Please try a new reading.");
-  const tarot = TAROTS.find((item) => item.id === result.tarot);
-  const mood = MOODS.find((item) => item.id === result.mood);
+  const tarot = getTarot(result.tarot);
+  const mood = getMood(result.mood);
   const [moliImage, tarotImage, outfitImage, foodImage, charmImage] =
     await Promise.all([
       svgImage(moliSvg),
@@ -398,7 +403,7 @@ export async function generateFortuneImage(
     font: "Georgia, serif",
     align: "center",
   });
-  text(ctx, "Your Daily Dose of Luck & Comfort", 540, 233, {
+  text(ctx, "A little magic for your everyday life.", 540, 233, {
     size: 27,
     align: "center",
     color: "#75805F",
@@ -447,46 +452,68 @@ export async function generateFortuneImage(
     ["Lucky Color", result.color.name, "color"],
     ["Lucky Outfit", result.outfit, "outfit"],
     ["Lucky Food", result.food, "food"],
-    ["Lucky Charm", result.charm, "charm"],
+    ["Lucky Item", result.charm, "charm"],
   ];
   recommendations.forEach(([label, value, type], index) => {
     const x = 70 + (index % 2) * 480;
-    const y = 1085 + Math.floor(index / 2) * 187;
+    const y = 1085 + Math.floor(index / 2) * 166;
     roundRect(
       ctx,
       x,
       y,
       460,
-      167,
+      146,
       24,
       index === 2 ? "#F8EEDE" : "#F0F1DD",
       "#E4E4C9",
     );
     if (itemImages[type])
-      ctx.drawImage(itemImages[type], x + 13, y + 42, 98, 98);
-    else categoryIcon(ctx, type, x + 62, y + 91, result.color.hex);
-    text(ctx, label.toUpperCase(), x + 114, y + 58, {
+      ctx.drawImage(itemImages[type], x + 13, y + 33, 98, 98);
+    else categoryIcon(ctx, type, x + 62, y + 82, result.color.hex);
+    text(ctx, label.toUpperCase(), x + 114, y + 49, {
       size: 19,
       color: "#84926A",
       weight: "600",
     });
-    wrapText(ctx, value, x + 114, y + 106, 320, 34, {
+    wrapText(ctx, value, x + 114, y + 97, 320, 34, {
       size: 28,
       font: "Georgia, serif",
     });
   });
-  roundRect(ctx, 70, 1470, 940, 151, 26, "#FAF0D7");
-  text(ctx, "A SOFT REMINDER", 105, 1512, {
-    size: 21,
+  roundRect(ctx, 70, 1420, 240, 126, 24, "#EAF0D9");
+  text(ctx, "LUCKY NUMBER", 190, 1457, {
+    size: 18,
+    align: "center",
+    color: "#84926A",
+    weight: "600",
+  });
+  text(ctx, String(result.number), 190, 1521, {
+    size: 56,
+    align: "center",
+    font: "Georgia, serif",
+  });
+  roundRect(ctx, 330, 1420, 680, 126, 24, "#F5E9DD");
+  text(ctx, "DAILY AFFIRMATION", 355, 1457, {
+    size: 18,
     color: "#9E8D5B",
     weight: "600",
   });
-  wrapText(ctx, result.tip, 105, 1560, 860, 36, {
-    size: 29,
+  wrapText(ctx, result.affirmation, 355, 1493, 630, 29, {
+    size: 25,
     font: "Georgia, serif",
   });
-  text(ctx, "YOUR LUCKY ENERGY", 540, 1679, {
-    size: 21,
+  roundRect(ctx, 70, 1568, 940, 118, 26, "#FAF0D7");
+  text(ctx, "A SOFT REMINDER", 105, 1603, {
+    size: 19,
+    color: "#9E8D5B",
+    weight: "600",
+  });
+  wrapText(ctx, result.tip, 105, 1638, 860, 32, {
+    size: 26,
+    font: "Georgia, serif",
+  });
+  text(ctx, "YOUR LUCKY ENERGY", 540, 1722, {
+    size: 18,
     align: "center",
     color: "#84926A",
     weight: "600",
@@ -495,20 +522,26 @@ export async function generateFortuneImage(
     star(
       ctx,
       412 + i * 64,
-      1728,
-      23,
+      1757,
+      20,
       i < result.energy ? "#D5B66D" : "#E8E5CE",
     );
-  text(ctx, `${result.energy} / 5 · a little luck goes a long way`, 540, 1784, {
-    size: 24,
+  text(ctx, `${result.energy} / 5 · a little luck goes a long way`, 540, 1796, {
+    size: 21,
     align: "center",
     color: "#7A8663",
   });
-  text(ctx, "An independent, unofficial portfolio concept.", 540, 1830, {
-    size: 18,
-    align: "center",
-    color: "#97A084",
-  });
+  text(
+    ctx,
+    "Independent Concept Project · Not an Official Collaboration",
+    540,
+    1830,
+    {
+      size: 18,
+      align: "center",
+      color: "#97A084",
+    },
+  );
   text(
     ctx,
     "For entertainment & self-reflection. Your future is yours to write.",

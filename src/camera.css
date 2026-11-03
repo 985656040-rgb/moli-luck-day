@@ -1,0 +1,243 @@
+.cam-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #28332099;
+  backdrop-filter: blur(8px);
+}
+.cam-panel {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 30px 24px 22px;
+  border: 1px solid #d9debd;
+  border-radius: 23px;
+  background: #fff9ea;
+  color: #355038;
+  text-align: center;
+  box-shadow: 0 16px 80px #23311744;
+}
+.cam-panel:focus {
+  outline: none;
+}
+.cam-panel > .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  padding: 5px 15px 0;
+}
+.cam-panel h2 {
+  margin: 8px 0 10px;
+  font-family: var(--serif);
+  font-size: 31px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+.cam-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eeefd9;
+  color: #6a7d48;
+  font-size: 24px;
+}
+.cam-description {
+  max-width: 330px;
+  margin: auto;
+  color: #72815d;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.cam-stage {
+  position: relative;
+  width: min(100%, 345px);
+  aspect-ratio: 3 / 4;
+  margin: 18px auto 0;
+  overflow: hidden;
+  border: 1px solid #d9dfbd;
+  border-radius: 18px;
+  background: radial-gradient(
+    ellipse at 72% 12%,
+    #fff6cb,
+    #eef0d5 65%,
+    #dbe5c3
+  );
+  isolation: isolate;
+}
+.cam-video {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  visibility: hidden;
+}
+.cam-is-live .cam-video {
+  visibility: visible;
+}
+.cam-botanicals {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.cam-botanicals .botanical-corners {
+  z-index: auto;
+}
+.cam-is-live .cam-botanicals {
+  display: none;
+}
+.cam-stage-caption {
+  position: absolute;
+  width: 100%;
+  top: 12%;
+  color: #7e8c5a;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 17px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+.cam-moli {
+  position: absolute;
+  padding: 0;
+  aspect-ratio: 240 / 220;
+  background: none;
+  border: none;
+  border-radius: 45%;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cam-moli:active {
+  cursor: grabbing;
+}
+.cam-moli > svg {
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  animation: cam-moli-float 4.5s ease-in-out infinite;
+}
+.cam-moli:active > svg {
+  animation-play-state: paused;
+}
+.cam-moli:focus-visible {
+  outline: 2px dashed #6c8b46;
+  outline-offset: 3px;
+}
+.cam-help {
+  margin-top: 10px;
+  color: #7e896c;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.cam-size {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 10px;
+  color: #6d7f53;
+}
+.cam-size > span {
+  white-space: nowrap;
+}
+.cam-size input {
+  width: 100%;
+  min-width: 0;
+  accent-color: #7c9853;
+  cursor: pointer;
+}
+.cam-size > span:last-child {
+  width: 30px;
+  text-align: right;
+}
+.cam-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cam-actions .button {
+  min-height: 43px;
+  padding: 10px 16px;
+  font-size: 12px;
+}
+.cam-notice {
+  margin-top: 12px;
+  color: #6f8055;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.cam-photo {
+  border-top: 1px solid #dfe3c7;
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.cam-photo h3 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 400;
+}
+.cam-photo img {
+  display: block;
+  width: min(200px, 100%);
+  height: auto;
+  margin: 0 auto 14px;
+  border: 1px solid #d9dfbd;
+  border-radius: 9px;
+}
+.cam-photo .button {
+  min-height: 43px;
+  font-size: 12px;
+}
+.cam-back-to-game {
+  margin-top: 14px;
+  padding: 8px 12px;
+  background: none;
+  font-size: 10px;
+  color: #77885b;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@keyframes cam-moli-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-moli > svg {
+    animation: none;
+  }
+}
+@media (max-width: 380px) {
+  .cam-backdrop {
+    padding: 12px;
+  }
+  .cam-panel {
+    padding: 28px 17px 18px;
+    max-height: calc(100dvh - 24px);
+  }
+  .cam-panel h2 {
+    font-size: 27px;
+  }
+  .cam-stage {
+    margin-top: 15px;
+  }
+}

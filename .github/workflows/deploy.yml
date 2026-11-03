@@ -26,6 +26,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Install browser for journey checks
+        run: npx playwright install --with-deps chromium
+      - name: Verify the production game at its GitHub Pages path
+        run: npm run test:e2e
+      - name: Keep browser evidence if checks fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence
+          path: test-results
+          if-no-files-found: ignore
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,6 +2,25 @@ import React, { useId } from "react";
 
 const green = "#5b793c";
 const gold = "#d8ad59";
+// Fixed organic contours keep MOLI softly irregular without changing on render.
+const edgeRadius = (angle) =>
+  1 + Math.sin(angle * 7) * 0.012 + Math.sin(angle * 13) * 0.008;
+const outlinePoints = Array.from({ length: 84 }, (_, i) => {
+  const angle = (i / 84) * Math.PI * 2;
+  const radius = edgeRadius(angle);
+  return [
+    120 + Math.cos(angle) * 86 * radius,
+    119 + Math.sin(angle) * 71 * radius,
+  ];
+});
+const mossOutline =
+  outlinePoints.reduce(
+    (path, point, i) => {
+      const next = outlinePoints[(i + 1) % outlinePoints.length];
+      return `${path} Q${point[0]} ${point[1]} ${(point[0] + next[0]) / 2} ${(point[1] + next[1]) / 2}`;
+    },
+    `M${(outlinePoints.at(-1)[0] + outlinePoints[0][0]) / 2} ${(outlinePoints.at(-1)[1] + outlinePoints[0][1]) / 2}`,
+  ) + "Z";
 const moss = Array.from({ length: 116 }, (_, i) => {
   const a = i * 2.39996323;
   const r = Math.sqrt((i + 0.5) / 116);
@@ -15,8 +34,8 @@ const moss = Array.from({ length: 116 }, (_, i) => {
 const fuzz = Array.from({ length: 78 }, (_, i) => {
   const a = (i / 78) * Math.PI * 2;
   return {
-    x: 120 + Math.cos(a) * 85,
-    y: 119 + Math.sin(a) * 70,
+    x: 120 + Math.cos(a) * 85 * edgeRadius(a),
+    y: 119 + Math.sin(a) * 70 * edgeRadius(a),
     dx: Math.cos(a) * (4 + (i % 5)),
     dy: Math.sin(a) * (4 + (i % 4)),
   };
@@ -54,10 +73,10 @@ function MossBody({ state = "happy", prefix }) {
     <g>
       <defs>
         <radialGradient id={`${prefix}-moss`} cx="39%" cy="27%" r="79%">
-          <stop stopColor="#c4d866" />
-          <stop offset=".46" stopColor="#9fbd43" />
-          <stop offset=".82" stopColor="#7ea239" />
-          <stop offset="1" stopColor="#668d32" />
+          <stop stopColor="#bfd57b" />
+          <stop offset=".46" stopColor="#a1be53" />
+          <stop offset=".82" stopColor="#7ea13e" />
+          <stop offset="1" stopColor="#628635" />
         </radialGradient>
         <radialGradient id={`${prefix}-glow`}>
           <stop stopColor="#eef2b5" stopOpacity=".6" />
@@ -75,19 +94,13 @@ function MossBody({ state = "happy", prefix }) {
           fill="none"
         />
       ))}
-      <ellipse
-        cx="120"
-        cy="119"
-        rx="86"
-        ry="71"
-        fill={`url(#${prefix}-moss)`}
-      />
+      <path d={mossOutline} fill={`url(#${prefix}-moss)`} />
       <ellipse cx="92" cy="86" rx="62" ry="46" fill={`url(#${prefix}-glow)`} />
       {moss.map((p, i) => (
         <g key={i} opacity={p.a === 0 ? 0.43 : 0.25}>
           <path
             d={`M${p.x - 2} ${p.y + 2}q0 -${p.r * 1.7} ${p.r} -${p.r * 2}m-${p.r} ${p.r * 2}q-${p.r * 1.4} -${p.r} -${p.r * 0.9} -${p.r * 2.5}`}
-            stroke={p.a === 0 ? "#e0e893" : "#628f31"}
+            stroke={p.a === 0 ? "#e0e8a3" : p.a === 1 ? "#557b34" : "#759847"}
             strokeWidth="1.15"
             strokeLinecap="round"
             fill="none"
@@ -400,7 +413,7 @@ function TarotScene({ id, prefix }) {
       : "#717b93"
     : id === "lovers"
       ? "#eed3c4"
-      : id === "world"
+      : ["world", "empress"].includes(id)
         ? "#e5e9c6"
         : "#f7e8ad";
   return (
@@ -533,6 +546,85 @@ function TarotScene({ id, prefix }) {
           </g>
         </>
       )}
+      {id === "empress" && (
+        <>
+          <circle cx="130" cy="49" r="16" fill="#f2df9b" opacity=".8" />
+          <path
+            d="M24 227V112q1-65 66-70q65 5 66 70v115"
+            fill="none"
+            stroke="#b0be87"
+            strokeWidth="5"
+          />
+          <path
+            d="M30 216V113q1-59 60-64q59 5 60 64v103"
+            fill="none"
+            stroke="#e2d7aa"
+            strokeWidth="1.5"
+          />
+          <path d="M15 222q28-22 59-9q37-24 92-3v46H15Z" fill="#b4c58f" />
+          <path d="M17 241q41-20 75-6q39-17 73-4v25H17Z" fill="#c4ce9d" />
+          {Array.from({ length: 16 }, (_, i) => {
+            const angle = Math.PI + (i / 15) * Math.PI;
+            const x = 90 + Math.cos(angle) * 64;
+            const y = 115 + Math.sin(angle) * 66;
+            return (
+              <g
+                key={i}
+                transform={`translate(${x} ${y}) rotate(${(angle * 180) / Math.PI + 90})`}
+              >
+                <path
+                  d="M0 0q-15-17-21-4q2 14 21 4m0 0q15-17 21-4q-2 14-21 4"
+                  fill={i % 2 ? "#96ad6c" : "#b2c489"}
+                />
+                {i % 3 === 0 && (
+                  <g>
+                    <circle cx="-5" cy="-2" r="5" fill="#edc7ba" />
+                    <circle cx="3" cy="-5" r="5" fill="#f3d7c4" />
+                    <circle cx="5" cy="3" r="5" fill="#e7b9ae" />
+                    <circle cx="-3" cy="5" r="5" fill="#f1d1be" />
+                    <circle r="3" fill="#d5b765" />
+                  </g>
+                )}
+              </g>
+            );
+          })}
+          {[
+            [35, 166],
+            [144, 181],
+            [24, 219],
+            [151, 231],
+          ].map(([x, y], i) => (
+            <g key={i} transform={`translate(${x} ${y})`}>
+              <path
+                d="M0 0q-2 12 2 22m-1-7q-12-11-13-2q4 8 13 2m0-7q10-12 13-4q-2 8-13 4"
+                fill="#99b16d"
+                stroke="#81995a"
+                strokeWidth=".7"
+              />
+              {[0, 72, 144, 216, 288].map((a) => (
+                <ellipse
+                  key={a}
+                  cx="0"
+                  cy="-5"
+                  rx="3.8"
+                  ry="6"
+                  fill={i % 2 ? "#efd0b6" : "#e6b8b0"}
+                  transform={`rotate(${a})`}
+                />
+              ))}
+              <circle r="3" fill="#e5c56e" />
+            </g>
+          ))}
+          <Spark x={91} y={84} size={7} color="#d7b96d" />
+          <path
+            d="M73 124q17-14 34 0m-29 4q12-8 24 0"
+            stroke="#f9f1d7"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      )}
       {id === "world" && (
         <>
           <ellipse
@@ -598,12 +690,21 @@ function TarotScene({ id, prefix }) {
                 ? "excited"
                 : id === "moon"
                   ? "calm"
-                  : id === "fool"
-                    ? "thinking"
-                    : "happy"
+                  : id === "empress"
+                    ? "calm"
+                    : id === "fool"
+                      ? "thinking"
+                      : "happy"
             }
             prefix={`${prefix}-body`}
           />
+        </g>
+      )}
+      {id === "empress" && (
+        <g stroke="#bb9a53" strokeWidth="1.1" strokeLinejoin="round">
+          <path d="M75 184l-2-14 10 7 8-13 7 13 10-7-2 14Z" fill="#e7cb83" />
+          <path d="M77 185h27" strokeWidth="3" />
+          <circle cx="91" cy="179" r="2" fill="#d9a99c" stroke="none" />
         </g>
       )}
       {["star", "sun", "world"].includes(id) && (
@@ -633,6 +734,7 @@ export function TarotArt({ id = "star", ...props }) {
     sun: "The Sun",
     moon: "The Moon",
     lovers: "The Lovers",
+    empress: "The Empress",
     world: "The World",
     fool: "The Fool",
   };

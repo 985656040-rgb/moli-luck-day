@@ -1,13 +1,124 @@
-import { useEffect, useRef, useState } from "react";
+import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BotanicalCorners, ItemIcon, Jar, Moli, TarotArt } from "./art.jsx";
 import {
   MOODS,
-  TAROTS,
   generateReading,
+  getMood,
+  getTarot,
   getSavedReading,
   saveReading,
 } from "./data.js";
-import { generateFortuneImage } from "./fortune-image.js";
+
+const CameraExperience = lazy(() => import("./CameraExperience.jsx"));
+
+function FeatureDialog({ title, children, onClose }) {
+  const closeButton = useRef();
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButton.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, []);
+  function onKeyDown(event) {
+    if (event.key === "Escape") onClose();
+    if (event.key === "Tab") {
+      event.preventDefault();
+      closeButton.current?.focus();
+    }
+  }
+  return (
+    <div className="modal-backdrop">
+      <section
+        className="save-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onKeyDown={onKeyDown}
+      >
+        <h2>{title}</h2>
+        <p className="modal-description" role="status">
+          {children}
+        </p>
+        <button
+          ref={closeButton}
+          className="button secondary"
+          onClick={onClose}
+        >
+          Back to my day
+        </button>
+      </section>
+    </div>
+  );
+}
+
+class CameraBoundary extends Component {
+  state = { unavailable: false };
+  static getDerivedStateFromError() {
+    return { unavailable: true };
+  }
+  render() {
+    if (this.state.unavailable)
+      return (
+        <FeatureDialog
+          title="A little pause for MOLI."
+          onClose={this.props.onClose}
+        >
+          The camera experience couldn’t load. Your lucky guide is still right
+          here.
+        </FeatureDialog>
+      );
+    return this.props.children;
+  }
+}
+
+function ArrowUpRight() {
+  return (
+    <svg
+      className="up-right"
+      viewBox="0 0 20 20"
+      width="17"
+      height="17"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 15 15 5M5 5h10v10" />
+    </svg>
+  );
+}
+
+function CameraInvite({ onClick }) {
+  return (
+    <button className="camera-invite" onClick={onClick}>
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+        <path
+          d="M8 6l2-3h4l2 3h4v14H4V6Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+      </svg>
+      <span>Bring MOLI Home</span>
+      <ArrowUpRight />
+    </button>
+  );
+}
 
 const heart = "♡";
 const formatDate = (date) =>
@@ -104,7 +215,8 @@ function SaveModal({ reading, art, close }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     panel.current?.focus();
-    generateFortuneImage(reading, art)
+    import("./fortune-image.js")
+      .then(({ generateFortuneImage }) => generateFortuneImage(reading, art))
       .then((image) => {
         if (!alive) return;
         objectUrl = URL.createObjectURL(image);
@@ -210,7 +322,11 @@ function SaveModal({ reading, art, close }) {
           ×
         </button>
         <p className="eyebrow">A LITTLE KEEPSAKE</p>
-        <h2 id="save-title">Take your luck with you.</h2>
+        <h2 id="save-title">
+          {art.shareIntent
+            ? "A little luck worth sharing."
+            : "Take your luck with you."}
+        </h2>
         <p className="modal-description">
           Made for your story. Saved from your reading.
         </p>
@@ -236,8 +352,7 @@ function SaveModal({ reading, art, close }) {
               disabled={sharing}
               onClick={share}
             >
-              {sharing ? "Opening share…" : "Share My Luck"}{" "}
-              <span aria-hidden="true">↗</span>
+              {sharing ? "Opening share…" : "Share My Luck"} <ArrowUpRight />
             </button>
             <p className="save-hint">
               1080 × 1920 PNG · On iPhone, you can also press and hold the image
@@ -262,15 +377,16 @@ export default function App() {
   const [revealed, setRevealed] = useState(false);
   const [saveArt, setSaveArt] = useState(null);
   const [storageNotice, setStorageNotice] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
   const heading = useRef();
   const drawLock = useRef(false);
   const flipTimer = useRef();
   const resultArt = useRef();
   const companionArt = useRef();
   const recommendationsArt = useRef();
-  const activeMood = MOODS.find((m) => m.id === mood);
-  const tarot = TAROTS.find((t) => t.id === reading?.tarot);
-  const resultMood = MOODS.find((m) => m.id === reading?.mood);
+  const activeMood = getMood(mood);
+  const tarot = getTarot(reading?.tarot);
+  const resultMood = getMood(reading?.mood);
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -317,7 +433,7 @@ export default function App() {
       restart();
     }
   }
-  function save() {
+  function save(shareIntent = false) {
     const moliSvg = companionArt.current?.querySelector("svg")?.outerHTML;
     const tarotSvg = resultArt.current?.querySelector("svg")?.outerHTML;
     const itemSvgs = Object.fromEntries(
@@ -327,7 +443,7 @@ export default function App() {
           ?.outerHTML,
       ]),
     );
-    setSaveArt({ moliSvg, tarotSvg, itemSvgs });
+    setSaveArt({ moliSvg, tarotSvg, itemSvgs, shareIntent });
   }
 
   return (
@@ -373,32 +489,35 @@ export default function App() {
                   ✧
                 </span>
               </h1>
-              <p className="tagline">
-                Your Daily Dose of
-                <br className="mobile-break" /> Luck &amp; Comfort
-              </p>
+              <p className="tagline">A little magic for your everyday life.</p>
               <p className="welcome-description">
                 A tiny friend. A thoughtful card.
                 <br />A little reminder that good things are growing.
               </p>
               <button className="button primary welcome-cta" onClick={restart}>
-                Find My Luck <span aria-hidden="true">{heart}</span>
+                Start My Lucky Day <span aria-hidden="true">{heart}</span>
               </button>
               {saved && (
                 <button
                   className="text-button previous-reading"
                   onClick={revisit}
                 >
-                  Revisit today’s reading <span aria-hidden="true">↗</span>
+                  Revisit today’s reading <ArrowUpRight />
                 </button>
               )}
               <div className="welcome-footnote">
                 <span aria-hidden="true">✧</span> Just a minute for you. No
                 right or wrong answers.
               </div>
+              <CameraInvite onClick={() => setCameraOpen(true)} />
             </div>
             <div className="welcome-art">
               <div className="sun-halo" />
+              <div className="floating-particles" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <span key={i} />
+                ))}
+              </div>
               <span className="art-star star-one" aria-hidden="true">
                 ✧
               </span>
@@ -429,9 +548,9 @@ export default function App() {
             <div className="section-heading">
               <p className="eyebrow">FIRST, A LITTLE CHECK-IN</p>
               <h1 ref={heading} tabIndex={-1} id="page-title">
-                Hey there!
+                How are you
                 <br />
-                <em>How are you feeling today?</em>
+                <em>feeling today?</em>
               </h1>
               <p>Whatever it is, there’s room for it here.</p>
             </div>
@@ -457,29 +576,33 @@ export default function App() {
                     {
                       {
                         happy: "A little sunshine",
+                        calm: "A quiet little glow",
                         anxious: "A busy little mind",
                         tired: "Running on soft mode",
-                        lost: "Finding my own way",
+                        unsure: "Finding my own way",
                       }[item.id]
                     }
                   </span>
                 </button>
               ))}
             </div>
-            <div
-              className={`mood-comfort ${mood ? "has-mood" : ""}`}
-              role="status"
-            >
-              <span aria-hidden="true">♡</span>
-              {activeMood?.message ||
-                "MOLI is here for you. All feelings are welcome."}
+            <div className={`mood-comfort ${mood ? "has-mood" : ""}`}>
+              <TouchMoli
+                key={mood || "initial"}
+                state={activeMood?.state || "comforting"}
+                className="mood-companion"
+              />
+              <p role="status">
+                {activeMood?.message ||
+                  "MOLI is here for you. All feelings are welcome."}
+              </p>
             </div>
             <button
               className="button primary continue-button"
               disabled={!mood}
               onClick={() => setScreen("tarot")}
             >
-              Continue <span aria-hidden="true">→</span>
+              Discover My Fortune <span aria-hidden="true">→</span>
             </button>
             <p className="tiny-note">
               A little honesty is a lovely place to start.
@@ -495,9 +618,9 @@ export default function App() {
             <div className="section-heading">
               <p className="eyebrow">LET A LITTLE MAGIC FIND YOU</p>
               <h1 ref={heading} tabIndex={-1} id="page-title">
-                Pick your
+                Pick a Card,
                 <br />
-                <em>magic card.</em>
+                <em>Find Your Magic</em>
               </h1>
               <p>
                 {selectedCard === null
@@ -559,18 +682,29 @@ export default function App() {
               ))}
             </div>
             <div className="draw-message" role="status" aria-live="polite">
+              <TouchMoli
+                state={
+                  selectedCard !== null
+                    ? "excited"
+                    : activeMood?.state || "calm"
+                }
+                className="tarot-companion"
+              />
               {revealed && tarot ? (
                 <>
                   <p className="eyebrow">{tarot.theme}</p>
                   <h2>{tarot.name}</h2>
                   <p>“{tarot.message}”</p>
+                  <div className="draw-guidance">
+                    <p>{tarot.encouragement}</p>
+                    <p>
+                      <span>A LITTLE IDEA FOR TODAY</span>
+                      {tarot.suggestion}
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
-                  <TouchMoli
-                    state={activeMood?.state || "calm"}
-                    className="tarot-companion"
-                  />
                   <p className="handwritten">
                     The card you need will find you.
                   </p>
@@ -582,7 +716,7 @@ export default function App() {
                 className="button primary reveal-button"
                 onClick={showResult}
               >
-                Reveal My Luck <span aria-hidden="true">✦</span>
+                Reveal My Lucky Guide <span aria-hidden="true">✦</span>
               </button>
             )}
             <p className="tiny-note">
@@ -599,7 +733,7 @@ export default function App() {
             <div className="section-heading">
               <p className="eyebrow">A POCKETFUL OF POSSIBILITIES</p>
               <h1 ref={heading} tabIndex={-1} id="page-title">
-                Your lucky <em>guide.</em>
+                Your Little <em>Lucky Guide</em>
                 <span className="heading-heart" aria-hidden="true">
                   ♡
                 </span>
@@ -624,7 +758,7 @@ export default function App() {
               </div>
               <div className="moli-message">
                 <div className="result-companion" ref={companionArt}>
-                  <TouchMoli state="comforting" />
+                  <TouchMoli state="happy" />
                 </div>
                 <div>
                   <span className="eyebrow">A LITTLE NOTE FROM MOLI</span>
@@ -662,7 +796,7 @@ export default function App() {
                   <strong>{reading.food}</strong>
                 </div>
                 <div className="lucky-tile">
-                  <span className="tile-label">Lucky charm</span>
+                  <span className="tile-label">Lucky item</span>
                   <ItemIcon
                     data-export="charm"
                     type="charm"
@@ -703,12 +837,28 @@ export default function App() {
                   </strong>
                 </div>
               </div>
+              <div className="daily-affirmation">
+                <div className="lucky-number">
+                  <span className="tile-label">Lucky number</span>
+                  <strong>{reading.number}</strong>
+                </div>
+                <div>
+                  <span className="eyebrow">DAILY AFFIRMATION</span>
+                  <p>“{reading.affirmation}”</p>
+                </div>
+              </div>
               <div className="result-actions">
-                <button className="button primary" onClick={save}>
-                  Save My Luck <span aria-hidden="true">♡</span>
+                <button className="button primary" onClick={() => save()}>
+                  Save My Lucky Card <span aria-hidden="true">♡</span>
                 </button>
-                <button className="button secondary" onClick={restart}>
-                  Try Again <span aria-hidden="true">↻</span>
+                <button className="button secondary" onClick={() => save(true)}>
+                  Share My Luck <ArrowUpRight />
+                </button>
+                <button
+                  className="button secondary play-again"
+                  onClick={restart}
+                >
+                  Play Again <span aria-hidden="true">↻</span>
                 </button>
               </div>
               {storageNotice && (
@@ -725,6 +875,7 @@ export default function App() {
             <p className="tiny-note">
               Keep what feels good. Let the rest float away.
             </p>
+            <CameraInvite onClick={() => setCameraOpen(true)} />
           </section>
         )}
       </main>
@@ -734,8 +885,7 @@ export default function App() {
         </span>
         <p>A little play. A little comfort. A little you.</p>
         <span className="footer-legal">
-          For fun &amp; self-reflection · An independent, unofficial portfolio
-          concept
+          Independent Concept Project · Not an Official Collaboration
         </span>
       </footer>
       {saveArt && reading && (
@@ -744,6 +894,22 @@ export default function App() {
           art={saveArt}
           close={() => setSaveArt(null)}
         />
+      )}
+      {cameraOpen && (
+        <CameraBoundary onClose={() => setCameraOpen(false)}>
+          <Suspense
+            fallback={
+              <FeatureDialog
+                title="Opening Bring MOLI Home"
+                onClose={() => setCameraOpen(false)}
+              >
+                MOLI is getting ready…
+              </FeatureDialog>
+            }
+          >
+            <CameraExperience onClose={() => setCameraOpen(false)} />
+          </Suspense>
+        </CameraBoundary>
       )}
     </div>
   );
